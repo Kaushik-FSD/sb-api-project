@@ -1,0 +1,76 @@
+# build, dockerize, and push
+
+name: Spring Boot Application Multi-Environment Dockerizing
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{github.repository}}
+
+jobs:
+  build_and_push:
+    name: Build and push the docker image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      # Without Buildx initialized, the pipeline falls back to the default docker driver,
+      # which does not support advanced cache exports
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log into GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{env.REGISTRY}}
+          username: ${{github.actor}}
+          password: ${{secrets.GITHUB_TOKEN}}
+
+      - name: Extracting the docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{env.REGISTRY}}/${{env.IMAGE_NAME}}
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest
+
+      - name: Build and push the docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          labels: ${{steps.meta.outputs.labels}}
+          tags: ${{steps.meta.outputs.tags}}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy_staging:
+    name: Deploy to Staging
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://company.com
+    steps:
+      - name: Deploy the image to the staging
+        env:
+          ENV_LABEL: ${{secrets.STAGING_LABEL}}
+          IMAGE_TAG: sha-${{github.sha}}
+        run: |
+          echo "Deploying to the staging server with environment ${ENV_LABEL} and tag ${IMAGE_TAG}"
+          # docker container run -d -p 8080:8080 -e APP_ENVIRONMENT="$ENV_LABEL" ${{env.REGISTRY}}/${{env}}
+
+# The *** symbols appear in your logs because of GitHub Actions' built-in secret masking.
+# GitHub automatically scans your pipeline logs. If it detects any text that matches
+# the exact value of a repository secret, it intercepts the output and replaces it with
+# asterisks (***) to protect sensitive information from being exposed.
