@@ -16,9 +16,10 @@ jobs:
     name: Build and push the docker image
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
       packages: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout the code
@@ -83,3 +84,6 @@ jobs:
 # GitHub automatically scans your pipeline logs. If it detects any text that matches
 # the exact value of a repository secret, it intercepts the output and replaces it with
 # asterisks (***) to protect sensitive information from being exposed.
+
+# Once you do the provenance attestation, you should be able to see the attestation in GitHub,
+# under the project > actions > attestations
