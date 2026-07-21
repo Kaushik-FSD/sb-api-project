@@ -45,6 +45,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push the docker image
+        id: push-step
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -53,6 +54,13 @@ jobs:
           tags: ${{steps.meta.outputs.tags}}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build provenance attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{env.REGISTRY}}/${{env.IMAGE_NAME}}
+          subject-digest: ${{steps.push-step.outputs.digest}}
+          push-to-registry: true
 
   deploy_staging:
     name: Deploy to Staging
